@@ -1,5 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/repository.dart';
+import '../../core/sync_service.dart';
+import '../../widgets/banner_offline.dart';
+import '../../widgets/common.dart';
 import '../../widgets/fondo.dart';
 import '../shared/chat_screen.dart';
 import '../shared/notificaciones_screen.dart';
@@ -18,13 +22,39 @@ class _ClienteHomeState extends State<ClienteHome> {
   int _tab = 0;
   int _noLeidas = 0;
   final _citasKey = GlobalKey<CitasScreenState>();
+  final _vehiculosKey = GlobalKey<VehiculosScreenState>();
 
   static const _titulos = ['Mis citas', 'Mis vehículos', 'Asistente Cingo', 'Mi perfil'];
+
+  Timer? _sync;
 
   @override
   void initState() {
     super.initState();
     _cargarContador();
+    _sincronizar();
+    // Cada 30 s intenta enviar lo que se guardó sin conexión.
+    _sync = Timer.periodic(const Duration(seconds: 30), (_) => _sincronizar());
+  }
+
+  @override
+  void dispose() {
+    _sync?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _sincronizar() async {
+    await SyncService.refrescarContador();
+    final r = await SyncService.sincronizar();
+    if (!mounted) return;
+    if (r.enviados > 0) {
+      snack(context, '${r.enviados} registro(s) sincronizado(s) con el servidor.');
+      _citasKey.currentState?.recargar();
+      _vehiculosKey.currentState?.recargar();
+    }
+    if (r.descartados > 0) {
+      snack(context, '${r.descartados} registro(s) fueron rechazados por el servidor (duplicados o datos inválidos).', error: true);
+    }
   }
 
   Future<void> _cargarContador() async {
@@ -41,7 +71,7 @@ class _ClienteHomeState extends State<ClienteHome> {
 
   @override
   Widget build(BuildContext context) {
-    final paginas = [CitasScreen(key: _citasKey), const VehiculosScreen(), const ChatScreen(), const PerfilScreen()];
+    final paginas = [CitasScreen(key: _citasKey), VehiculosScreen(key: _vehiculosKey), const ChatScreen(), const PerfilScreen()];
 
     return FondoApp(child: Scaffold(
       backgroundColor: Colors.transparent,
@@ -61,13 +91,21 @@ class _ClienteHomeState extends State<ClienteHome> {
           ),
         ],
       ),
-      body: IndexedStack(index: _tab, children: paginas),
+      body: Column(children: [
+        const BannerOffline(),
+        Expanded(child: IndexedStack(index: _tab, children: paginas)),
+      ]),
       floatingActionButton: _tab == 0
           ? FloatingActionButton.extended(onPressed: _nuevaCita, icon: const Icon(Icons.add), label: const Text('Solicitar lavado'))
           : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
+        onDestinationSelected: (i) {
+          setState(() => _tab = i);
+          // Al entrar a una pestaña se piden los datos otra vez.
+          if (i == 0) _citasKey.currentState?.recargar();
+          if (i == 1) _vehiculosKey.currentState?.recargar();
+        },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.event_note), label: 'Citas'),
           NavigationDestination(icon: Icon(Icons.directions_car), label: 'Vehículos'),

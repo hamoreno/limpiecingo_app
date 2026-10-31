@@ -8,16 +8,16 @@ class FondoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-    decoration: const BoxDecoration(
-      color: Color(0xFFF5F8FA),
-      image: DecorationImage(
-        image: ResizeImage(AssetImage('assets/images/fondo.jpg'), width: 480),
-        fit: BoxFit.cover,
-        colorFilter: ColorFilter.mode(Color(0xE3F5F8FA), BlendMode.srcOver),
-      ),
-    ),
-    child: child,
-  );
+        decoration: const BoxDecoration(
+          color: Color(0xFFF5F8FA),
+          image: DecorationImage(
+            image: ResizeImage(AssetImage('assets/images/fondo.jpg'), width: 480),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(Color(0xE3F5F8FA), BlendMode.srcOver),
+          ),
+        ),
+        child: child,
+      );
 }
 
 /// Degradado para usar dentro de AppBar.flexibleSpace.
@@ -29,13 +29,13 @@ class GradientBar extends StatelessWidget {
 }
 
 PreferredSizeWidget gradAppBar(String title, {List<Widget>? actions}) => AppBar(
-  title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-  actions: actions,
-  backgroundColor: Colors.transparent,
-  elevation: 0,
-  scrolledUnderElevation: 0,
-  flexibleSpace: const GradientBar(),
-);
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      actions: actions,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      flexibleSpace: const GradientBar(),
+    );
 
 /// Entrada animada: aparece con fundido y deslizándose hacia arriba.
 class Animado extends StatelessWidget {
@@ -70,7 +70,7 @@ class TimelineEstado extends StatefulWidget {
 
 class _TimelineEstadoState extends State<TimelineEstado> with SingleTickerProviderStateMixin {
   late final AnimationController _c =
-  AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
 
   static const _pasos = ['Aceptada', 'En camino', 'En proceso', 'Finalizada'];
   static const _iconos = [Icons.check, Icons.directions_car, Icons.cleaning_services, Icons.flag];
@@ -82,14 +82,14 @@ class _TimelineEstadoState extends State<TimelineEstado> with SingleTickerProvid
   }
 
   Widget _mensaje(IconData i, Color c, String t) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(color: c.withOpacity(.1), borderRadius: BorderRadius.circular(14)),
-    child: Row(children: [
-      Icon(i, color: c),
-      const SizedBox(width: 10),
-      Expanded(child: Text(t, style: TextStyle(color: c, fontWeight: FontWeight.w600))),
-    ]),
-  );
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: c.withOpacity(.1), borderRadius: BorderRadius.circular(14)),
+        child: Row(children: [
+          Icon(i, color: c),
+          const SizedBox(width: 10),
+          Expanded(child: Text(t, style: TextStyle(color: c, fontWeight: FontWeight.w600))),
+        ]),
+      );
 
   Widget _nodo(int i, int idx) {
     final hecho = i < idx || idx == 3;

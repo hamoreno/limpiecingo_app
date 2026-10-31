@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/config.dart';
 import '../../core/location.dart';
 import '../../core/repository.dart';
-import '../../widgets/common.dart';
+import '../../widgets/banner_offline.dart';
 import '../../widgets/fondo.dart';
 import '../shared/notificaciones_screen.dart';
 import '../shared/perfil_screen.dart';
@@ -115,7 +115,10 @@ class _LavadorHomeState extends State<LavadorHome> {
           ),
         ],
       ),
-      body: IndexedStack(index: _tab, children: paginas),
+      body: Column(children: [
+        const BannerOffline(),
+        Expanded(child: IndexedStack(index: _tab, children: paginas)),
+      ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: _irA,

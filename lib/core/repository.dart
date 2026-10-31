@@ -1,5 +1,7 @@
 import '../models/models.dart';
 import 'api_client.dart';
+import 'local_db.dart';
+import 'sync_service.dart';
 
 /// Capa de acceso a datos: cada método corresponde a un endpoint de Laravel.
 class Repo {
@@ -8,9 +10,43 @@ class Repo {
   static List<T> _list<T>(Map<String, dynamic> r, T Function(Map<String, dynamic>) f) =>
       (r['data'] as List).map((e) => f(Map<String, dynamic>.from(e))).toList();
 
+  /// Lectura con respaldo local: si hay internet guarda copia en SQLite;
+  /// si no hay conexión devuelve la última copia guardada.
+  static Future<List<T>> _listaConCache<T>(
+    String nombre,
+    String path,
+    T Function(Map<String, dynamic>) f, {
+    Map<String, dynamic>? query,
+  }) async {
+    try {
+      final r = await _api.get(path, query: query);
+      await LocalDb.guardar(nombre, r['data']);
+      SyncService.offline.value = false;
+      return _list(r, f);
+    } on ApiException catch (e) {
+      if (!e.sinConexion) rethrow;
+      final copia = await LocalDb.leer(nombre);
+      if (copia == null) rethrow; // nunca se descargó: no hay nada que mostrar
+      SyncService.offline.value = true;
+      return (copia as List).map((x) => f(Map<String, dynamic>.from(x))).toList();
+    }
+  }
+
+  /// Escritura con cola: devuelve true si se envió, false si quedó guardada para después.
+  static Future<bool> _enviarOEncolar(String tipo, String path, Map<String, dynamic> data) async {
+    try {
+      await _api.post(path, data: data);
+      return true;
+    } on ApiException catch (e) {
+      if (!e.sinConexion) rethrow;
+      await LocalDb.encolar(tipo, data);
+      await SyncService.refrescarContador();
+      return false;
+    }
+  }
+
   // ---- Comunes ----
-  static Future<List<Servicio>> servicios() async =>
-      _list(await _api.get('/v1/servicios'), Servicio.fromJson);
+  static Future<List<Servicio>> servicios() => _listaConCache('servicios', '/v1/servicios', Servicio.fromJson);
 
   static Future<List<Notificacion>> notificaciones() async =>
       _list(await _api.get('/v1/notificaciones'), Notificacion.fromJson);
@@ -24,21 +60,20 @@ class Repo {
   static Future<void> leerTodasNotificaciones() => _api.post('/v1/notificaciones/leer-todas');
 
   // ---- Cliente ----
-  static Future<List<Vehiculo>> vehiculos() async =>
-      _list(await _api.get('/v1/cliente/vehiculos'), Vehiculo.fromJson);
+  static Future<List<Vehiculo>> vehiculos() => _listaConCache('vehiculos', '/v1/cliente/vehiculos', Vehiculo.fromJson);
 
-  static Future<void> crearVehiculo(Map<String, dynamic> d) => _api.post('/v1/cliente/vehiculos', data: d);
+  /// true = enviado al servidor; false = guardado sin conexión (se enviará solo).
+  static Future<bool> crearVehiculo(Map<String, dynamic> d) => _enviarOEncolar('crear_vehiculo', '/v1/cliente/vehiculos', d);
   static Future<void> actualizarVehiculo(int id, Map<String, dynamic> d) => _api.put('/v1/cliente/vehiculos/$id', data: d);
   static Future<void> eliminarVehiculo(int id) => _api.delete('/v1/cliente/vehiculos/$id');
 
-  static Future<List<Cita>> citasCliente() async =>
-      _list(await _api.get('/v1/cliente/citas'), Cita.fromJson);
+  static Future<List<Cita>> citasCliente() => _listaConCache('citas_cliente', '/v1/cliente/citas', Cita.fromJson);
 
   static Future<Cita> citaCliente(int id) async =>
       Cita.fromJson((await _api.get('/v1/cliente/citas/$id'))['data']);
 
-  static Future<Cita> crearCita(Map<String, dynamic> d) async =>
-      Cita.fromJson((await _api.post('/v1/cliente/citas', data: d))['data']);
+  /// true = enviada al servidor; false = guardada sin conexión (se enviará sola).
+  static Future<bool> crearCita(Map<String, dynamic> d) => _enviarOEncolar('crear_cita', '/v1/cliente/citas', d);
 
   static Future<void> cancelarCita(int id) => _api.post('/v1/cliente/citas/$id/cancelar');
 
@@ -79,8 +114,12 @@ class Repo {
 
   static Future<void> aceptarSolicitud(int id) => _api.post('/v1/lavador/solicitudes/$id/aceptar');
 
-  static Future<List<Cita>> citasLavador({String? tipo}) async =>
-      _list(await _api.get('/v1/lavador/citas', query: tipo == null ? null : {'tipo': tipo}), Cita.fromJson);
+  static Future<List<Cita>> citasLavador({String? tipo}) => _listaConCache(
+        'citas_lavador_${tipo ?? 'todas'}',
+        '/v1/lavador/citas',
+        Cita.fromJson,
+        query: tipo == null ? null : {'tipo': tipo},
+      );
 
   static Future<Cita> citaLavador(int id) async =>
       Cita.fromJson((await _api.get('/v1/lavador/citas/$id'))['data']);

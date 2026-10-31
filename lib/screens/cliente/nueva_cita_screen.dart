@@ -55,7 +55,7 @@ class _NuevaCitaScreenState extends State<NuevaCitaScreen> {
     }
     setState(() => _enviando = true);
     try {
-      await Repo.crearCita({
+      final enviada = await Repo.crearCita({
         'servicio_id': _servicio!.id,
         'vehiculo_id': _vehiculo!.id,
         'fecha': DateFormat('yyyy-MM-dd').format(_fecha),
@@ -66,7 +66,7 @@ class _NuevaCitaScreenState extends State<NuevaCitaScreen> {
         if (_obs.text.trim().isNotEmpty) 'observacion_cliente': _obs.text.trim(),
       });
       if (!mounted) return;
-      snack(context, 'Tu solicitud de lavado fue registrada.');
+      snack(context, enviada ? 'Tu solicitud de lavado fue registrada.' : 'Sin conexión: tu solicitud se guardó y se enviará cuando haya internet.');
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) snack(context, e.toString(), error: true);

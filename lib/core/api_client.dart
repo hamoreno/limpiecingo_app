@@ -6,7 +6,9 @@ import 'config.dart';
 class ApiException implements Exception {
   final String message;
   final int? statusCode;
-  ApiException(this.message, {this.statusCode});
+  /// true cuando no hubo respuesta del servidor (sin internet / servidor caído).
+  final bool sinConexion;
+  ApiException(this.message, {this.statusCode, this.sinConexion = false});
   @override
   String toString() => message;
 }
@@ -56,7 +58,7 @@ class ApiClient {
     }
     if (e.type == DioExceptionType.connectionError ||
         e.type == DioExceptionType.connectionTimeout) {
-      return ApiException('No se pudo conectar con el servidor. Revisa tu conexión.');
+      return ApiException('No se pudo conectar con el servidor. Revisa tu conexión.', sinConexion: true);
     }
     return ApiException(
         'Error inesperado (${e.response?.statusCode ?? 'sin respuesta'}).',

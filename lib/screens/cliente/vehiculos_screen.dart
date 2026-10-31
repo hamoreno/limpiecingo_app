@@ -6,12 +6,15 @@ import '../../widgets/common.dart';
 class VehiculosScreen extends StatefulWidget {
   const VehiculosScreen({super.key});
   @override
-  State<VehiculosScreen> createState() => _VehiculosScreenState();
+  State<VehiculosScreen> createState() => VehiculosScreenState();
 }
 
-class _VehiculosScreenState extends State<VehiculosScreen> {
+class VehiculosScreenState extends State<VehiculosScreen> {
   late Future<List<Vehiculo>> _f = Repo.vehiculos();
   void _recargar() => setState(() => _f = Repo.vehiculos());
+
+  /// Se llama desde fuera (al entrar a la pestaña o tras sincronizar).
+  void recargar() => _recargar();
 
   Future<void> _abrirForm([Vehiculo? v]) async {
     final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => VehiculoForm(vehiculo: v)));
@@ -96,7 +99,10 @@ class _VehiculoFormState extends State<VehiculoForm> {
     };
     try {
       if (widget.vehiculo == null) {
-        await Repo.crearVehiculo(d);
+        final enviado = await Repo.crearVehiculo(d);
+        if (!enviado && mounted) {
+          snack(context, 'Sin conexión: el vehículo se guardó en tu teléfono y se enviará cuando haya internet.');
+        }
       } else {
         await Repo.actualizarVehiculo(widget.vehiculo!.id, d);
       }
@@ -109,14 +115,14 @@ class _VehiculoFormState extends State<VehiculoForm> {
   }
 
   Widget _t(TextEditingController c, String l, {bool req = false, TextCapitalization cap = TextCapitalization.words}) => Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: TextFormField(
-          controller: c,
-          textCapitalization: cap,
-          decoration: InputDecoration(labelText: l),
-          validator: req ? (v) => (v == null || v.trim().isEmpty) ? 'Campo obligatorio' : null : null,
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 14),
+    child: TextFormField(
+      controller: c,
+      textCapitalization: cap,
+      decoration: InputDecoration(labelText: l),
+      validator: req ? (v) => (v == null || v.trim().isEmpty) ? 'Campo obligatorio' : null : null,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
